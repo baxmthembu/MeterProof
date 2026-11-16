@@ -81,14 +81,13 @@ export default function LoginPage() {
             <form className="grid grid-cols-1 gap-4" onSubmit={verify}>
               <h1>Check your email</h1>
               <p className="text-ink-2" role="status">
-                We emailed <span className="font-medium break-all">{email}</span>. Type the code from that email here, or open its link on this
-                device.
+                We emailed <span className="font-medium break-all">{email}</span>. Type the code from that email here.
               </p>
               <div className="field">
                 <label htmlFor="code">Code from the email</label>
                 <input id="code" name="code" className="input fig text-lg" inputMode="numeric" autoComplete="one-time-code" required
                   maxLength={12} spellCheck={false} aria-invalid={!!error} aria-describedby="code-hint" />
-                <p id="code-hint" className="hint">Reading the email on another device? The code signs you in here.</p>
+                <p id="code-hint" className="hint">You can read the email on any device. The code signs you in here.</p>
               </div>
               {error && <p className="error" role="alert">{error}</p>}
               <button type="submit" className="btn btn--ink" disabled={busy} aria-busy={busy}>{busy ? "Signing in…" : "Sign in"}</button>
@@ -97,7 +96,7 @@ export default function LoginPage() {
           ) : (
             <form className="grid grid-cols-1 gap-4" onSubmit={send}>
               <h1>Sign in</h1>
-              <p className="text-ink-2">We email you a one-time code and link. There is no password to remember.</p>
+              <p className="text-ink-2">We email you a one-time code. There is no password to remember.</p>
               <div className="field">
                 <label htmlFor="email">Email address</label>
                 <input ref={emailInput} id="email" name="email" type="email" className="input" required autoComplete="email" spellCheck={false}
