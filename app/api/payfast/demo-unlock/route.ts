@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, crossSite, isUuid, rateLimited } from "@/lib/api-guard";
 import { PRODUCTS, type Product } from "@/lib/payfast";
 import { hasSupabaseServer, supabaseAdmin, supabaseFromCookies } from "@/lib/supabase-server";
 
@@ -7,8 +8,12 @@ export async function POST(request: Request) {
   if (process.env.NEXT_PUBLIC_DEMO_MODE !== "true") return NextResponse.json({ error: "Demo mode is off." }, { status: 403 });
   if (!hasSupabaseServer()) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
 
+  const blocked = crossSite(request) ?? (await rateLimited(`demo:ip:${clientIp(request)}`, 30, 600));
+  if (blocked) return blocked;
+
   const body = (await request.json().catch(() => null)) as { product?: Product; disputeId?: string | null } | null;
-  if (!body?.product || !(body.product in PRODUCTS)) return NextResponse.json({ error: "Unknown product." }, { status: 400 });
+  if (!body?.product || !Object.hasOwn(PRODUCTS, body.product)) return NextResponse.json({ error: "Unknown product." }, { status: 400 });
+  if (body.product === "dispute_pack" && !isUuid(body.disputeId)) return NextResponse.json({ error: "That dispute was not found." }, { status: 404 });
 
   const { data } = await (await supabaseFromCookies()).auth.getUser();
   if (!data.user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });

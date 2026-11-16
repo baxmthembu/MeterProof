@@ -1,6 +1,12 @@
-/** Shrinks a phone photo to a JPEG no wider or taller than `max` px: less mobile data, smaller PDFs. */
+/**
+ * Shrinks a phone photo to a JPEG no wider or taller than `max` px: less mobile data, smaller PDFs.
+ * Re-drawing through a canvas also means only pixels are kept: location data and anything else
+ * hidden in the original file is dropped, and a file that is not really an image is refused.
+ */
 export async function downscale(file: Blob, max = 1600, quality = 0.8): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error("That file could not be read as a photo.");
+  });
   const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);

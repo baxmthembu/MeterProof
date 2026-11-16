@@ -2,13 +2,21 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Profile, Store } from "./types";
 
+// The session cookie is Secure on https and SameSite=Lax. It cannot be HttpOnly: this client reads
+// it in the browser to talk to Supabase directly (see security-checklist.md).
 export const supabaseBrowser = () =>
-  createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookieOptions: { sameSite: "lax", secure: typeof location !== "undefined" && location.protocol === "https:" },
+  });
 
 import { toDispute, toMeter, toPayment, toReading, type Row } from "./rows";
 
+/** Database errors name tables, columns and policies, so they are logged, never shown. */
 function ok<T>(res: { data: T | null; error: { message: string } | null }): T {
-  if (res.error) throw new Error(res.error.message);
+  if (res.error) {
+    console.error("MeterProof data error:", res.error.message);
+    throw new Error("We could not save or load that. Check your connection and try again.");
+  }
   return res.data as T;
 }
 
@@ -60,7 +68,10 @@ export function createSupabaseStore(): Store {
       if (photo) {
         photoPath = `${user.id}/${meterId}/${crypto.randomUUID()}.jpg`;
         const up = await sb.storage.from("meter-photos").upload(photoPath, photo, { contentType: "image/jpeg" });
-        if (up.error) throw new Error(up.error.message);
+        if (up.error) {
+          console.error("MeterProof upload error:", up.error.message);
+          throw new Error("We could not upload that photo. Try again, or use a smaller photo.");
+        }
       }
       // logged_at is left to the database clock on purpose.
       const saved = await sb.from("readings").insert({ user_id: user.id, meter_id: meterId, value, note, photo_path: photoPath }).select().single();

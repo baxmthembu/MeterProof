@@ -39,7 +39,12 @@ export default function LoginPage() {
       email: address, options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     setBusy(false);
-    if (error) return setError(error.message);
+    if (error) {
+      console.error("MeterProof sign-in error:", error.message);
+      return setError(/rate|too many|seconds/i.test(error.message)
+        ? "Too many attempts. Wait a minute, then try again."
+        : "We could not send the email. Check the address and try again.");
+    }
     setEmail(address);
     setStep("code");
   }

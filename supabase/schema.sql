@@ -154,3 +154,57 @@ create policy "meter photos insert own" on storage.objects for insert to authent
 drop policy if exists "meter photos delete own" on storage.objects;
 create policy "meter photos delete own" on storage.objects for delete to authenticated
   using (bucket_id = 'meter-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ---------------------------------------------------------------- security hardening
+-- Photos: JPEG only, 5 MB at most (the app shrinks every photo to a small JPEG before upload).
+update storage.buckets
+   set file_size_limit = 5242880, allowed_mime_types = array['image/jpeg']
+ where id = 'meter-photos';
+
+-- Length limits, enforced by the database whatever the browser sends.
+alter table public.profiles drop constraint if exists profiles_lengths;
+alter table public.profiles add constraint profiles_lengths
+  check (char_length(full_name) <= 120 and char_length(address) <= 500);
+
+alter table public.meters drop constraint if exists meters_lengths;
+alter table public.meters add constraint meters_lengths
+  check (char_length(account_number) between 1 and 40 and char_length(meter_number) between 1 and 40);
+
+alter table public.readings drop constraint if exists readings_lengths;
+alter table public.readings add constraint readings_lengths
+  check (char_length(note) <= 140 and (photo_path is null or char_length(photo_path) <= 200));
+
+alter table public.disputes drop constraint if exists disputes_lengths;
+alter table public.disputes add constraint disputes_lengths
+  check (char_length(reference_number) <= 60);
+
+-- A reading's photo must sit in the owner's own folder.
+alter table public.readings drop constraint if exists readings_photo_owner;
+alter table public.readings add constraint readings_photo_owner
+  check (photo_path is null or photo_path like user_id::text || '/%');
+
+-- Rate limiting for the API routes. Only the server (service role) can use it.
+create table if not exists public.rate_limits (
+  key text primary key,
+  window_start timestamptz not null default now(),
+  count integer not null default 0
+);
+alter table public.rate_limits enable row level security; -- no policies: invisible to users
+
+create or replace function public.rate_limit_hit(p_key text, p_max integer, p_window_seconds integer)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare
+  v_count integer;
+begin
+  insert into public.rate_limits as r (key, window_start, count)
+  values (p_key, now(), 1)
+  on conflict (key) do update set
+    count = case when r.window_start < now() - make_interval(secs => p_window_seconds) then 1 else r.count + 1 end,
+    window_start = case when r.window_start < now() - make_interval(secs => p_window_seconds) then now() else r.window_start end
+  returning r.count into v_count;
+  return v_count <= p_max;
+end;
+$$;
+
+revoke all on function public.rate_limit_hit(text, integer, integer) from public, anon, authenticated;
+grant execute on function public.rate_limit_hit(text, integer, integer) to service_role;

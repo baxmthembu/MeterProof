@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { clientIp, crossSite, rateLimited } from "@/lib/api-guard";
 import { hasSupabaseServer, supabaseAdmin, supabaseFromCookies } from "@/lib/supabase-server";
 
 /** Erases the signed-in user: their photos, then the auth user, which cascades to every table. */
-export async function DELETE() {
+export async function DELETE(request: Request) {
   if (!hasSupabaseServer()) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  const blocked = crossSite(request) ?? (await rateLimited(`account:ip:${clientIp(request)}`, 10, 600));
+  if (blocked) return blocked;
 
   const { data } = await (await supabaseFromCookies()).auth.getUser();
   if (!data.user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });

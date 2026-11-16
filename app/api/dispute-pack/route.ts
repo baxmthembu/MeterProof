@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, crossSite, isUuid, rateLimited } from "@/lib/api-guard";
 import { disputeLetter } from "@/lib/letters";
 import { buildDisputePack, type Annexure } from "@/lib/pdf";
 import { toDispute, toMeter, toPayment, toReading } from "@/lib/store/rows";
@@ -12,12 +13,18 @@ import { hasSupabaseServer, supabaseAdmin, supabaseFromCookies } from "@/lib/sup
 export async function POST(request: Request) {
   if (!hasSupabaseServer()) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
 
+  const blocked = crossSite(request) ?? (await rateLimited(`pack:ip:${clientIp(request)}`, 60, 600));
+  if (blocked) return blocked;
+
   const body = (await request.json().catch(() => null)) as { disputeId?: string } | null;
-  if (!body?.disputeId) return NextResponse.json({ error: "Missing dispute." }, { status: 400 });
+  if (!isUuid(body?.disputeId)) return NextResponse.json({ error: "That dispute was not found." }, { status: 404 });
 
   const { data } = await (await supabaseFromCookies()).auth.getUser();
   if (!data.user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   const userId = data.user.id;
+  // Building a PDF with photos is the most expensive thing the server does.
+  const tooMany = await rateLimited(`pack:user:${userId}`, 20, 3600);
+  if (tooMany) return tooMany;
 
   // The service-role client bypasses RLS, so every query is scoped to this user by hand.
   const admin = supabaseAdmin();

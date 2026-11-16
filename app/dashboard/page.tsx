@@ -10,6 +10,7 @@ import { getStore, METER_UTILITY_LABEL, tariffUtility, type Meter, type MeterUti
 import { MUNICIPALITIES, MUNICIPALITY_IDS, type MunicipalityId } from "@/lib/tariffs";
 import { errorMessage, useData } from "@/lib/use-data";
 
+const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
 const unitOf = (m: Meter) => MUNICIPALITIES[m.municipality].tariffs[tariffUtility(m.utility)].unit;
 
 export default function MetersPage() {
@@ -215,6 +216,10 @@ function LogForm({ meter, onSaved, onCancel }: { meter: Meter; onSaved: () => Pr
     const value = Number(String(f.get("value")).replace(/[\s,]/g, ""));
     if (!(value >= 0)) return setError("Enter the reading as a number, like 47980.");
     const file = f.get("photo");
+    if (file instanceof File && file.size > 0) {
+      if (!file.type.startsWith("image/")) return setError("Choose a photo. Other file types are not accepted.");
+      if (file.size > MAX_PHOTO_BYTES) return setError("That photo is over 25 MB. Choose a smaller one.");
+    }
     setBusy(true);
     setError(null);
     try {
