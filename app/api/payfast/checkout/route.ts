@@ -26,7 +26,12 @@ export async function POST(request: Request) {
     .select("id").single();
   if (payment.error) return NextResponse.json({ error: "Could not start the payment." }, { status: 500 });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  // PayFast must return to, and notify, the address the buyer is actually using. A deployed site
+  // always knows its own origin; NEXT_PUBLIC_SITE_URL only matters on localhost, where it can
+  // point at a tunnel so PayFast can reach the webhook.
+  const origin = new URL(request.url).origin;
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  const siteUrl = (isLocal && process.env.NEXT_PUBLIC_SITE_URL?.trim()) || origin;
   return NextResponse.json({
     action: `https://${payfastHost()}/eng/process`,
     fields: checkoutFields({ product: body.product, paymentId: payment.data.id, userId: data.user.id, disputeId, email: data.user.email ?? "", siteUrl }),
