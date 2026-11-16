@@ -40,6 +40,14 @@ test("bill check: overcharge and safe payment", () => {
   assert.equal(r.overbilledUnits, 100);
   assert.equal(r.overchargeRand, 287.5);                  // 517.5 - 230
   assert.equal(r.safePaymentRand, 230);                   // 5 units a day x 30
+  // two photos a fortnight apart set the average: 140 units / 14 days = 10 a day
+  const two = checkBill({ tariff: flat, billingDays: 30, billedPrevious: 1000, billedCurrent: 1250, actualReading: 1150, earlier: { reading: 1010, daysBefore: 14 } });
+  assert.equal(two.averageFromPhotos, true);
+  assert.equal(two.dailyAverageUnits, 10);
+  // two photos seconds apart are ignored, not extrapolated
+  const close = checkBill({ tariff: flat, billingDays: 30, billedPrevious: 1000, billedCurrent: 1250, actualReading: 1150, earlier: { reading: 1110, daysBefore: 0.0003 } });
+  assert.equal(close.averageFromPhotos, false);
+  assert.equal(close.safePaymentRand, 230);
   const under = checkBill({ tariff: flat, billingDays: 30, billedPrevious: 1000, billedCurrent: 1100, actualReading: 1150 });
   assert.equal(under.overchargeRand, 0);                  // never negative
 });
@@ -69,4 +77,8 @@ test("PayFast signature round-trips and rejects tampering", () => {
   const sub = checkoutFields({ product: "account_shield", paymentId: "p1", userId: "u1", disputeId: null, email: "a@example.com", siteUrl: "http://localhost:3000" });
   assert.ok(sub.some(([k, v]) => k === "frequency" && v === "3"));
   assert.equal(sub.at(-1)?.[0], "signature");
+  assert.ok(sub.every(([, v]) => v !== ""), "no blank field is posted to PayFast");
+  // an ITN signed over its blank fields, as PayFast sends it, verifies
+  const itn: Fields = [["m_payment_id", "abc"], ["custom_str4", ""], ["amount_gross", "39.00"]];
+  assert.equal(verifyItnSignature([...itn, ["signature", sign(itn, "pass phrase", true)]], "pass phrase"), true);
 });

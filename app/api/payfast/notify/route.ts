@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   const confirm = await fetch(`https://${payfastHost()}/eng/query/validate`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: paramString(fields),
+    body: paramString(fields, undefined, true),
   });
   if (!(await confirm.text()).trim().startsWith("VALID")) return new Response("Not confirmed", { status: 400 });
 

@@ -63,7 +63,10 @@ export function createSupabaseStore(): Store {
         if (up.error) throw new Error(up.error.message);
       }
       // logged_at is left to the database clock on purpose.
-      return toReading(ok(await sb.from("readings").insert({ user_id: user.id, meter_id: meterId, value, note, photo_path: photoPath }).select().single()));
+      const saved = await sb.from("readings").insert({ user_id: user.id, meter_id: meterId, value, note, photo_path: photoPath }).select().single();
+      // Do not leave an uploaded photo behind if the reading itself failed to save.
+      if (saved.error && photoPath) await sb.storage.from("meter-photos").remove([photoPath]);
+      return toReading(ok(saved));
     },
     async photoBlob(path) {
       const { data } = await sb.storage.from("meter-photos").download(path);

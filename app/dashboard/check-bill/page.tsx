@@ -182,7 +182,7 @@ export default function CheckBillPage() {
               </dl>
               <p className="hint">
                 The safe average is {formatUnits(result.dailyAverageUnits, tariff.unit)} a day
-                {earlier ? ", from your last two photo readings," : ", from this billing period,"} over 30 days. It covers consumption only: keep
+                {result.averageFromPhotos ? ", from your last two photo readings," : ", from this billing period,"} over 30 days. It covers consumption only: keep
                 paying fixed charges, rates and refuse in full.
               </p>
               <p className="notice">

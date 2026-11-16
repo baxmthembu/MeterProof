@@ -26,6 +26,9 @@ export function steppedCharge(tariff: Tariff, units: number, days = 30): number 
   return round2(tariff.ratesIncludeVat ? total : total * (1 + VAT_RATE));
 }
 
+/** Two photo readings must be at least this many days apart to set the daily average. */
+export const MIN_AVERAGE_DAYS = 7;
+
 export interface BillCheckInput {
   tariff: Tariff;
   billingDays: number;
@@ -46,6 +49,8 @@ export interface BillCheckResult {
   actualRand: number;
   overchargeRand: number;
   dailyAverageUnits: number;
+  /** True when the average came from two of the user's photos, false when from the billing period. */
+  averageFromPhotos: boolean;
   /** Fair monthly amount for consumption, to keep paying while the dispute runs. */
   safePaymentRand: number;
 }
@@ -57,11 +62,12 @@ export function checkBill(input: BillCheckInput): BillCheckResult {
   const billedRand = steppedCharge(tariff, billedUnits, billingDays);
   const actualRand = steppedCharge(tariff, actualUnits, billingDays);
 
-  // Prefer the user's own two photos for the average; fall back to the billing period.
-  const dailyAverageUnits =
-    earlier && earlier.daysBefore > 0 && actualReading >= earlier.reading
-      ? (actualReading - earlier.reading) / earlier.daysBefore
-      : actualUnits / Math.max(1, billingDays);
+  // Prefer the user's own two photos for the average, but only when they are far enough apart
+  // to mean something: two readings minutes apart would extrapolate to an absurd daily figure.
+  const averageFromPhotos = !!earlier && earlier.daysBefore >= MIN_AVERAGE_DAYS && actualReading >= earlier.reading;
+  const dailyAverageUnits = averageFromPhotos
+    ? (actualReading - earlier!.reading) / earlier!.daysBefore
+    : actualUnits / Math.max(1, billingDays);
 
   return {
     billedUnits: round2(billedUnits),
@@ -71,6 +77,7 @@ export function checkBill(input: BillCheckInput): BillCheckResult {
     actualRand,
     overchargeRand: round2(Math.max(0, billedRand - actualRand)),
     dailyAverageUnits: round2(dailyAverageUnits),
+    averageFromPhotos,
     safePaymentRand: steppedCharge(tariff, dailyAverageUnits * 30, 30),
   };
 }

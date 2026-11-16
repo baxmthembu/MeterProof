@@ -18,15 +18,18 @@ const enc = (v: string) =>
 
 export type Fields = [string, string][];
 
-/** PayFast signs fields in the order they are sent, skipping blanks, then the passphrase. */
-export function paramString(fields: Fields, passphrase?: string): string {
-  const parts = fields.filter(([k, v]) => k !== "signature" && v !== "").map(([k, v]) => `${k}=${enc(v)}`);
+/**
+ * PayFast signs fields in the order they are sent, then the passphrase.
+ * Checkout forms are signed without blank fields; ITN notifications are signed with them (keepBlank).
+ */
+export function paramString(fields: Fields, passphrase?: string, keepBlank = false): string {
+  const parts = fields.filter(([k, v]) => k !== "signature" && (keepBlank || v !== "")).map(([k, v]) => `${k}=${enc(v)}`);
   if (passphrase) parts.push(`passphrase=${enc(passphrase)}`);
   return parts.join("&");
 }
 
-export const sign = (fields: Fields, passphrase?: string) =>
-  createHash("md5").update(paramString(fields, passphrase)).digest("hex");
+export const sign = (fields: Fields, passphrase?: string, keepBlank = false) =>
+  createHash("md5").update(paramString(fields, passphrase, keepBlank)).digest("hex");
 
 export interface CheckoutInput {
   product: Product;
@@ -59,12 +62,15 @@ export function checkoutFields(input: CheckoutInput): Fields {
     // subscription_type 1 = subscription, frequency 3 = monthly, cycles 0 = until cancelled
     fields.push(["subscription_type", "1"], ["recurring_amount", amount], ["frequency", "3"], ["cycles", "0"]);
   }
-  fields.push(["signature", sign(fields, process.env.PAYFAST_PASSPHRASE)]);
-  return fields;
+  // PayFast rejects the signature if a blank field is posted, so blanks are dropped, not just unsigned.
+  const sent = fields.filter(([, v]) => v !== "");
+  sent.push(["signature", sign(sent, process.env.PAYFAST_PASSPHRASE)]);
+  return sent;
 }
 
 /** True when the ITN body's signature matches what we compute with our passphrase. */
 export function verifyItnSignature(fields: Fields, passphrase?: string): boolean {
   const sent = fields.find(([k]) => k === "signature")?.[1];
-  return !!sent && sent === sign(fields, passphrase);
+  // PayFast's ITN includes its blank fields in the signature; accept the blank-free form too.
+  return !!sent && (sent === sign(fields, passphrase, true) || sent === sign(fields, passphrase));
 }

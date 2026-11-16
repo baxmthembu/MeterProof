@@ -9,9 +9,15 @@ export async function DELETE() {
   if (!data.user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
 
   const admin = supabaseAdmin();
-  const photos = await admin.from("readings").select("photo_path").eq("user_id", data.user.id).not("photo_path", "is", null);
-  const paths = (photos.data ?? []).map((r) => r.photo_path as string);
-  if (paths.length) await admin.storage.from("meter-photos").remove(paths);
+  // Empty the user's whole photo folder ({user_id}/{meter_id}/file), including any file no reading points to.
+  const bucket = admin.storage.from("meter-photos");
+  const folders = await bucket.list(data.user.id, { limit: 1000 });
+  const paths: string[] = [];
+  for (const folder of folders.data ?? []) {
+    const files = await bucket.list(`${data.user.id}/${folder.name}`, { limit: 1000 });
+    for (const file of files.data ?? []) paths.push(`${data.user.id}/${folder.name}/${file.name}`);
+  }
+  if (paths.length) await bucket.remove(paths);
 
   const { error } = await admin.auth.admin.deleteUser(data.user.id);
   if (error) return NextResponse.json({ error: "Could not delete your account. Please try again." }, { status: 500 });
