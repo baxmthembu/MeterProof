@@ -62,7 +62,8 @@ Only per-unit charges are modelled. Fixed monthly charges do not change with the
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (server only; never commit it)
 4. **Authentication > URL Configuration**: set Site URL to `http://localhost:3000` and add `http://localhost:3000/auth/callback` to Redirect URLs. Add your production URLs later.
-5. Restart `npm run dev`. If you ran an earlier version of `schema.sql`, run the current file again: it is safe to re-run and adds the photo delete rule. The app now asks for an email and sends a magic link, and data is stored in Supabase.
+5. **Authentication > Emails > Templates**: in both the "Magic Link" and "Confirm signup" templates, add a line showing the one-time code, for example `Your sign-in code: {{ .Token }}`. The login page accepts that code, which is what lets someone sign in on their laptop after reading the email on their phone.
+6. Restart `npm run dev`. If you ran an earlier version of `schema.sql`, run the current file again: it is safe to re-run and adds the photo delete rule. The app now asks for an email and sends a magic link, and data is stored in Supabase.
 
 Local-mode data is not migrated: it stays in the browser.
 
