@@ -18,7 +18,7 @@
 export const VAT_RATE = 0.15;
 export const TARIFF_YEAR = "2026/27";
 
-export type MunicipalityId = "joburg" | "ethekwini" | "tshwane" | "capetown";
+export type MunicipalityId = "joburg" | "ethekwini" | "tshwane" | "capetown" | "ekurhuleni" | "mangaung" | "buffalocity";
 export type Utility = "electricity" | "water";
 
 export interface Block {
@@ -212,6 +212,119 @@ export const MUNICIPALITIES: Record<MunicipalityId, Municipality> = {
         verified: true,
         note: "From the City's notice of approved 2026/27 tariffs (Level Water Wise, no restrictions), including VAT. The fixed basic charge by meter size is billed separately.",
         source: "https://www.lkid.co.za/resources/From_the_City/Approved%20Rates%20and%20Tariffs%202026-2027%20.pdf",
+      },
+    },
+  },
+
+  ekurhuleni: {
+    id: "ekurhuleni",
+    name: "City of Ekurhuleni",
+    shortName: "Ekurhuleni",
+    billingDepartment: "City of Ekurhuleni, Finance Department (Revenue)",
+    utilities: { electricity: "Ekurhuleni Energy", water: "Ekurhuleni Water and Sanitation" },
+    tariffs: {
+      electricity: {
+        name: "Tariff B (Residential)",
+        unit: "kWh",
+        ratesIncludeVat: false,
+        blocks: [{ upTo: null, rate: 3.676 }],
+        typicalMonthlyUse: 450,
+        verified: true,
+        note: "From Schedule 2 of the City's final 2026/27 tariffs (Annexure F, page 12): R3.6760/kWh before VAT, the same in both seasons. Low-use homes on Tariff A.2 pay R3.0635/kWh. The monthly basic charge is billed separately.",
+        source: "https://www.ekurhuleni.gov.za/wp-content/uploads/2026/06/Annexure-F-2026-27-Tariffs.pdf",
+      },
+      water: {
+        name: "Household use (WA0017)",
+        unit: "kL",
+        ratesIncludeVat: false,
+        blocks: [
+          { upTo: 6, rate: 25.21 },
+          { upTo: 15, rate: 41.55 },
+          { upTo: 30, rate: 50.89 },
+          { upTo: 45, rate: 63.33 },
+          { upTo: null, rate: 78.09 },
+        ],
+        typicalMonthlyUse: 15,
+        verified: true,
+        note: "From Schedule 3 of the City's final 2026/27 tariffs (Annexure F, page 48), before VAT, per residential unit.",
+        source: "https://www.ekurhuleni.gov.za/wp-content/uploads/2026/06/Annexure-F-2026-27-Tariffs.pdf",
+      },
+    },
+  },
+
+  mangaung: {
+    id: "mangaung",
+    name: "Mangaung Metropolitan Municipality",
+    shortName: "Mangaung",
+    billingDepartment: "Mangaung Metropolitan Municipality, Revenue Management",
+    utilities: { electricity: "Centlec", water: "Mangaung Water and Sanitation" },
+    tariffs: {
+      electricity: {
+        name: "Tariff II, IBT Domestic (conventional)",
+        unit: "kWh",
+        ratesIncludeVat: false,
+        // ponytail: one table per utility. Centlec's winter rates (June to August) are higher, so the
+        // lower rates are used and any overcharge shown is a minimum.
+        blocks: [
+          { upTo: 350, rate: 3.0442 },
+          { upTo: null, rate: 3.5058 },
+        ],
+        typicalMonthlyUse: 450,
+        verified: false,
+        note: "From Centlec's NERSA-approved schedule for 1 July 2026 to 30 June 2027. The document's layout makes it unclear which figures are summer and which winter, so the lowest reading is used: any overcharge shown is a minimum. The R50 monthly basic charge is billed separately.",
+        source: "https://centlec.co.za/Tariffs/TariffsDocuments",
+      },
+      water: {
+        name: "Household use (WA0091)",
+        unit: "kL",
+        ratesIncludeVat: false,
+        blocks: [
+          { upTo: 6, rate: 19.5 },
+          { upTo: 15, rate: 37 },
+          { upTo: 30, rate: 40 },
+          { upTo: 60, rate: 51 },
+          { upTo: null, rate: 62 },
+        ],
+        typicalMonthlyUse: 15,
+        verified: false,
+        note: "From the City's Annexure A4 water tariffs for 2026/27, before VAT. It was published with the draft budget documents, and the final figures could not be confirmed.",
+        source: "https://www.mangaung.co.za/Budget-%E2%80%93-IDP-%E2%80%93-SDBIP/",
+      },
+    },
+  },
+
+  buffalocity: {
+    id: "buffalocity",
+    name: "Buffalo City Metropolitan Municipality",
+    shortName: "Buffalo City",
+    billingDepartment: "Buffalo City Metropolitan Municipality, Revenue Management",
+    utilities: { electricity: "BCMM Electricity", water: "BCMM Water and Sanitation" },
+    tariffs: {
+      electricity: {
+        name: "Scale 1A, domestic credit meter (EL0100)",
+        unit: "kWh",
+        ratesIncludeVat: false,
+        blocks: [{ upTo: null, rate: 3.89 }],
+        typicalMonthlyUse: 450,
+        verified: true,
+        note: "From the City's final 2026/27 tariff book (page 1): R3.89/kWh before VAT. The monthly basic charge is billed separately.",
+        source: "https://www.buffalocity.gov.za/CM/uploads/documents/20261106061781156795BCMMFinalTariffBook20262027.pdf",
+      },
+      water: {
+        name: "Domestic, normal consumption (WA0100)",
+        unit: "kL",
+        ratesIncludeVat: false,
+        blocks: [
+          { upTo: 6, rate: 27.88 },
+          { upTo: 10, rate: 28.43 },
+          { upTo: 20, rate: 39.49 },
+          { upTo: 30, rate: 51.19 },
+          { upTo: null, rate: 64.24 },
+        ],
+        typicalMonthlyUse: 15,
+        verified: true,
+        note: "From the City's final 2026/27 tariff book (page 16), before VAT. Punitive drought tariffs, when Council declares them, are higher.",
+        source: "https://www.buffalocity.gov.za/CM/uploads/documents/20261106061781156795BCMMFinalTariffBook20262027.pdf",
       },
     },
   },

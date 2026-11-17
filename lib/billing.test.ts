@@ -1,9 +1,10 @@
 // Run: npm test   (node --test, Node 24 strips the types)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { steppedCharge, checkBill, quickCheck, businessDaysBetween, formatSast, formatRand } from "./billing.ts";
+import { steppedCharge, checkBill, quickCheck, businessDaysBetween, formatSast, formatRand, leakAlert } from "./billing.ts";
 import { MUNICIPALITIES, type Tariff } from "./tariffs.ts";
 import { sign, verifyItnSignature, checkoutFields, type Fields } from "./payfast.ts";
+import { PLAN_DAYS, PRICES } from "./store/types.ts";
 
 const flat: Tariff = { name: "t", unit: "kWh", ratesIncludeVat: false, typicalMonthlyUse: 100, verified: true, note: "", source: "",
   blocks: [{ upTo: 100, rate: 1 }, { upTo: 200, rate: 2 }, { upTo: null, rate: 3 }] };
@@ -67,6 +68,31 @@ test("business days skip weekends", () => {
   assert.equal(businessDaysBetween(new Date(2026, 10, 2), new Date(2026, 10, 30)), 20);
 });
 
+test("leak alert needs a real jump over the usual daily use", () => {
+  const at = (day: number, value: number) => ({ value, loggedAt: new Date(Date.UTC(2026, 9, 1 + day)).toISOString() });
+  const steady = [at(0, 100), at(10, 105), at(20, 110)]; // 0.5 kL a day throughout
+  assert.equal(leakAlert(steady), null);
+  const leak = leakAlert([at(0, 100), at(10, 105), at(20, 125)]); // 2 kL a day in the last period
+  assert.ok(leak && leak.latestPerDay === 2 && leak.usualPerDay === 0.5);
+  assert.equal(leakAlert([at(0, 100), at(10, 101), at(20, 103)]), null, "doubling from a tiny base is not a leak");
+  assert.equal(leakAlert([at(0, 100), at(10, 105), at(10.2, 120)]), null, "readings under a day apart are skipped");
+  assert.equal(leakAlert([at(0, 100), at(10, 105), at(20, 50)]), null, "meter replaced");
+  assert.equal(leakAlert([at(0, 100), at(10, 105)]), null);
+});
+
+test("Landlord plan is a R299 monthly subscription", () => {
+  const f = checkoutFields({ product: "landlord", paymentId: "p1", userId: "u1", disputeId: null, email: "a@example.com", siteUrl: "http://localhost:3000" });
+  assert.ok(f.some(([k, v]) => k === "amount" && v === "299.00"));
+  assert.ok(f.some(([k, v]) => k === "recurring_amount" && v === "299.00"));
+  assert.ok(f.some(([k, v]) => k === "frequency" && v === "3"));
+});
+
+test("the cheapest Shield payment costs more than one dispute pack", () => {
+  // Otherwise buying Shield once and cancelling is a cheaper way to get a single pack.
+  assert.ok(PRICES.account_shield > PRICES.dispute_pack);
+  assert.ok(PLAN_DAYS.account_shield >= 90 && PLAN_DAYS.landlord >= 30);
+});
+
 test("formatting", () => {
   assert.equal(formatSast("2026-11-15T20:03:00Z"), "2026-11-15 22:03 SAST");
   assert.equal(formatRand(1234.5), "R 1 234.50");
@@ -80,7 +106,8 @@ test("PayFast signature round-trips and rejects tampering", () => {
   signed[1] = ["amount_gross", "1.00"];
   assert.equal(verifyItnSignature(signed, "pass phrase"), false);
   const sub = checkoutFields({ product: "account_shield", paymentId: "p1", userId: "u1", disputeId: null, email: "a@example.com", siteUrl: "http://localhost:3000" });
-  assert.ok(sub.some(([k, v]) => k === "frequency" && v === "3"));
+  assert.ok(sub.some(([k, v]) => k === "frequency" && v === "4"), "Shield is billed quarterly");
+  assert.ok(sub.some(([k, v]) => k === "recurring_amount" && v === "129.00"));
   assert.equal(sub.at(-1)?.[0], "signature");
   assert.ok(sub.every(([, v]) => v !== ""), "no blank field is posted to PayFast");
   // an ITN signed over its blank fields, as PayFast sends it, verifies

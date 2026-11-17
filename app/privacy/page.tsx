@@ -32,6 +32,11 @@ export default function PrivacyPage() {
       <ul>
         <li>Supabase stores the database and your photographs.</li>
         <li>PayFast processes payments.</li>
+        <li>
+          Anthropic (Claude), in the United States, reads a statement photo or PDF if you upload one on the Check bill screen (to fill in
+          the figures or explain the charges), and reads the digits on a meter photo when you log a reading, to catch typing mistakes.
+          Only the answer comes back; Anthropic does not keep the file for MeterProof.
+        </li>
         <li>Our hosting provider serves the website.</li>
       </ul>
       <p>

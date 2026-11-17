@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
+import { PRICES, type Product } from "./store/types.ts";
 
-export type Product = "dispute_pack" | "account_shield";
+export type { Product };
 
-export const PRODUCTS: Record<Product, { name: string; amount: number; recurring: boolean }> = {
-  dispute_pack: { name: "MeterProof Dispute Pack", amount: 79, recurring: false },
-  account_shield: { name: "MeterProof Account Shield", amount: 39, recurring: true },
+/** frequency is PayFast's subscription code: 3 = monthly, 4 = quarterly. Null means a once-off payment. */
+export const PRODUCTS: Record<Product, { name: string; amount: number; frequency: "3" | "4" | null }> = {
+  dispute_pack: { name: "MeterProof Dispute Pack", amount: PRICES.dispute_pack, frequency: null },
+  account_shield: { name: "MeterProof Account Shield", amount: PRICES.account_shield, frequency: "4" },
+  landlord: { name: "MeterProof Landlord", amount: PRICES.landlord, frequency: "3" },
 };
 
 export const payfastHost = () =>
@@ -58,9 +61,9 @@ export function checkoutFields(input: CheckoutInput): Fields {
     ["custom_str2", input.disputeId ?? ""],
     ["custom_str3", input.product],
   ];
-  if (p.recurring) {
-    // subscription_type 1 = subscription, frequency 3 = monthly, cycles 0 = until cancelled
-    fields.push(["subscription_type", "1"], ["recurring_amount", amount], ["frequency", "3"], ["cycles", "0"]);
+  if (p.frequency) {
+    // subscription_type 1 = subscription, cycles 0 = until cancelled
+    fields.push(["subscription_type", "1"], ["recurring_amount", amount], ["frequency", p.frequency], ["cycles", "0"]);
   }
   // PayFast rejects the signature if a blank field is posted, so blanks are dropped, not just unsigned.
   const sent = fields.filter(([, v]) => v !== "");

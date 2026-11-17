@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useConfirm } from "@/components/confirm";
 import { Loading, LoadError } from "@/components/states";
 import { formatLongDate } from "@/lib/billing";
-import { getStore } from "@/lib/store";
+import { getStore, isLandlord, meterLimit } from "@/lib/store";
 import { errorMessage, useData } from "@/lib/use-data";
 
 export default function AccountPage() {
@@ -48,13 +48,16 @@ export default function AccountPage() {
         <h2 id="held">What we hold</h2>
         <dl className="rows">
           {store.mode === "supabase" && <div><dt>Signed in as</dt><dd className="break-all">{profile.email}</dd></div>}
-          <div><dt>Meters</dt><dd className="fig">{meters.length}</dd></div>
+          <div><dt>Meters</dt><dd className="fig">{meters.length} of {meterLimit(profile)}</dd></div>
           <div><dt>Readings</dt><dd className="fig">{readings.length}</dd></div>
           <div><dt>Bill checks</dt><dd className="fig">{disputes.length}</dd></div>
           <div>
             <dt>Account Shield</dt>
             <dd>{shield ? `Active until ${formatLongDate(profile.shieldActiveUntil!)}` : "Not active"}</dd>
           </div>
+          {isLandlord(profile) && (
+            <div><dt>Landlord plan</dt><dd>Active until {formatLongDate(profile.landlordUntil!)}</dd></div>
+          )}
         </dl>
         <p className="hint">
           {store.mode === "local"
@@ -63,7 +66,7 @@ export default function AccountPage() {
           See the <Link href="/privacy" className="link">privacy policy</Link>.
         </p>
         {shield && store.mode === "supabase" && (
-          <p className="notice">To stop the monthly Account Shield debit, cancel the subscription in your PayFast account or with your bank. Access then ends on the date above.</p>
+          <p className="notice">To stop the Account Shield (quarterly) or Landlord (monthly) debit, cancel the subscription in your PayFast account or with your bank. Access then ends on the date above.</p>
         )}
       </section>
 

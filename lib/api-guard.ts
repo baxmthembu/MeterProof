@@ -37,7 +37,10 @@ function safeHost(origin: string): string | null {
  */
 // ponytail: fails open if the function is missing or the database is down, so a schema that
 // has not been re-run never locks users out. Move to an edge limiter if abuse becomes real.
-export async function rateLimited(key: string, max: number, windowSeconds: number): Promise<NextResponse | null> {
+export async function rateLimited(
+  key: string, max: number, windowSeconds: number,
+  message = "Too many requests. Please wait a moment and try again.",
+): Promise<NextResponse | null> {
   try {
     const { data, error } = await supabaseAdmin().rpc("rate_limit_hit", { p_key: key, p_max: max, p_window_seconds: windowSeconds });
     if (error) {
@@ -46,7 +49,7 @@ export async function rateLimited(key: string, max: number, windowSeconds: numbe
     }
     if (data === false) {
       return NextResponse.json(
-        { error: "Too many requests. Please wait a moment and try again." },
+        { error: message },
         { status: 429, headers: { "retry-after": String(windowSeconds) } },
       );
     }

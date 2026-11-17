@@ -8,6 +8,9 @@ import { checkBill, formatRand, formatSast, formatUnits } from "@/lib/billing";
 import { getStore, tariffUtility, type Meter } from "@/lib/store";
 import { MUNICIPALITIES, TARIFF_YEAR } from "@/lib/tariffs";
 import { errorMessage, useData } from "@/lib/use-data";
+import { downscale } from "@/lib/image";
+import type { BillFigures } from "@/app/api/read-bill/route";
+import type { BillExplanation } from "@/app/api/explain-bill/route";
 
 const num = (s: string) => (s.trim() === "" ? null : Number(s.replace(/[\s,]/g, "")));
 
@@ -23,6 +26,12 @@ export default function CheckBillPage() {
   const [isEstimate, setIsEstimate] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [upload, setUpload] = useState<File | null>(null);
+  const [explaining, setExplaining] = useState(false);
+  const [explained, setExplained] = useState<BillExplanation | null>(null);
+  const [explainError, setExplainError] = useState<string | null>(null);
 
   if (state.status === "loading") return <Loading label="Loading your meters" />;
   if (state.status === "error") return <LoadError message={state.message} onRetry={reload} />;
@@ -66,6 +75,65 @@ export default function CheckBillPage() {
       })
     : null;
 
+  // Photos are shrunk so the upload stays small; PDFs go as they are.
+  const shrink = async (file: File) =>
+    file.type.startsWith("image/") ? new File([await downscale(file, 2000, 0.85)], "bill.jpg", { type: "image/jpeg" }) : file;
+
+  async function explain() {
+    if (!upload) return;
+    setExplaining(true);
+    setExplainError(null);
+    try {
+      const body = new FormData();
+      body.append("file", upload);
+      const res = await fetch("/api/explain-bill", { method: "POST", body });
+      const json = await res.json().catch(() => ({ error: "Explaining the bill failed." }));
+      if (!res.ok) throw new Error(json.error);
+      setExplained(json as BillExplanation);
+    } catch (e) {
+      setExplainError(errorMessage(e));
+    } finally {
+      setExplaining(false);
+    }
+  }
+
+  async function readBill(file: File) {
+    setReading(true);
+    setReadNote(null);
+    setExplained(null);
+    setExplainError(null);
+    try {
+      const body = new FormData();
+      const small = await shrink(file);
+      setUpload(small);
+      body.append("file", small);
+      body.append("utility", meter.utility === "water" ? "water" : "electricity");
+      body.append("meterNumber", meter.meterNumber);
+      const res = await fetch("/api/read-bill", { method: "POST", body });
+      const json = await res.json().catch(() => ({ error: "Reading the bill failed." }));
+      if (!res.ok) throw new Error(json.error);
+      const f = json as BillFigures;
+      if (f.statementDate) setStatementDate(f.statementDate);
+      if (f.previousReading !== null) setPrevious(String(f.previousReading));
+      if (f.currentReading !== null) setCurrent(String(f.currentReading));
+      if (f.billingDays !== null) setDays(String(f.billingDays));
+      if (f.isEstimate !== null) setIsEstimate(f.isEstimate);
+      const missed = [f.statementDate, f.previousReading, f.currentReading, f.billingDays].filter((v) => v === null).length;
+      const digits = (s: string) => s.replace(/\D/g, "");
+      const otherMeter = f.meterNumber && digits(f.meterNumber) !== digits(meter.meterNumber);
+      setReadNote({
+        ok: missed === 0 && !otherMeter,
+        text:
+          (otherMeter ? `The statement shows meter ${f.meterNumber}, not ${meter.meterNumber}. ` : "") +
+          (missed === 4 ? "No figures could be read. Type them in from the statement." : `Figures filled in${missed ? `, ${missed} could not be read` : ""}. Check each one against your statement.`),
+      });
+    } catch (e) {
+      setReadNote({ ok: false, text: errorMessage(e) });
+    } finally {
+      setReading(false);
+    }
+  }
+
   async function save() {
     if (!result || !evidence || p === null || c === null || d === null) return;
     setBusy(true);
@@ -92,6 +160,44 @@ export default function CheckBillPage() {
       </div>
 
       <form className="stock grid gap-4 p-5" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+        <div className="field">
+          <label htmlFor="statement">Read the figures from your statement (optional)</label>
+          <input id="statement" name="statement" type="file" accept="image/*,application/pdf" className="input" disabled={reading} aria-describedby="statement-hint"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readBill(f); }} />
+          <p id="statement-hint" className="hint">
+            {reading ? "Reading your statement…" : "A photo or PDF of the page with the meter readings. It is sent to Anthropic (Claude), in the United States, to be read, and is not stored."}
+          </p>
+          {readNote && <p className={readNote.ok ? "notice" : "error"} role="status">{readNote.text}</p>}
+          {upload && !explained && (
+            <button type="button" className="btn btn--card sm:justify-self-start" onClick={() => void explain()} disabled={explaining} aria-busy={explaining}>
+              {explaining ? "Explaining…" : "Explain each charge on this statement"}
+            </button>
+          )}
+          {explainError && <p className="error" role="alert">{explainError}</p>}
+          {explained && (
+            <section aria-labelledby="explain-title" className="grid gap-3 border-t border-rule pt-4">
+              <h2 id="explain-title">Your statement, explained</h2>
+              <p>{explained.summary}</p>
+              {explained.lines.length > 0 && (
+                <dl className="rows">
+                  {explained.lines.map((l, i) => (
+                    <div key={i}>
+                      <dt>{l.item}{l.amountRand !== null && <> &middot; <span className="fig">{formatRand(l.amountRand)}</span></>}</dt>
+                      <dd className="text-ink-2">{l.meaning}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {explained.worthChecking.length > 0 && (
+                <div className="notice">
+                  <p className="font-medium">Worth checking</p>
+                  <ul className="m-0 grid gap-1 pl-5">{explained.worthChecking.map((x) => <li key={x}>{x}</li>)}</ul>
+                </div>
+              )}
+              <p className="hint">Written by Claude from your statement. It can make mistakes, and it is not legal advice.</p>
+            </section>
+          )}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="field">
             <label htmlFor="meter">Meter</label>

@@ -1,6 +1,6 @@
 // Local mode: everything stays in this browser. Rows in localStorage, photos in IndexedDB.
 // ponytail: one browser, no sync, cleared with site data. Add Supabase keys for the real backend.
-import type { Dispute, Meter, Payment, Profile, Reading, Store } from "./types";
+import { meterLimit, meterLimitMessage, PLAN_DAYS, PRICES, type Dispute, type Meter, type Payment, type Profile, type Reading, type Store } from "./types";
 
 interface Db {
   profile: Profile;
@@ -58,6 +58,7 @@ export const localStore: Store = {
   listMeters: async () => load().meters,
   async addMeter(m) {
     const db = load();
+    if (db.meters.length >= meterLimit(db.profile)) throw new Error(meterLimitMessage(meterLimit(db.profile)));
     const meter: Meter = { ...m, id: id(), createdAt: now() };
     db.meters.push(meter);
     save(db);
@@ -114,9 +115,13 @@ export const localStore: Store = {
   },
   async demoPay(product, disputeId) {
     const db = load();
-    const payment: Payment = { id: id(), disputeId, product, amount: product === "dispute_pack" ? 79 : 39, status: "complete", createdAt: now() };
+    const payment: Payment = { id: id(), disputeId, product, amount: PRICES[product], status: "complete", createdAt: now() };
     db.payments.push(payment);
-    if (product === "account_shield") db.profile.shieldActiveUntil = new Date(Date.now() + 35 * 86_400_000).toISOString();
+    if (product !== "dispute_pack") {
+      const until = new Date(Date.now() + PLAN_DAYS[product] * 86_400_000).toISOString();
+      if (!db.profile.shieldActiveUntil || db.profile.shieldActiveUntil < until) db.profile.shieldActiveUntil = until;
+      if (product === "landlord") db.profile.landlordUntil = until;
+    }
     save(db);
   },
 };

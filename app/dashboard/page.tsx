@@ -5,11 +5,16 @@ import { Camera, Pencil, Plus, Trash2 } from "lucide-react";
 import { useConfirm } from "@/components/confirm";
 import { Photo } from "@/components/photo";
 import { Loading, LoadError } from "@/components/states";
-import { formatSast } from "@/lib/billing";
+import { PayButton } from "@/components/pay-button";
+import { formatSast, leakAlert } from "@/lib/billing";
 import { downscale } from "@/lib/image";
-import { getStore, METER_UTILITY_LABEL, tariffUtility, type Meter, type MeterUtility } from "@/lib/store";
+import {
+  getStore, isLandlord, LANDLORD_METER_LIMIT, METER_LIMIT, METER_UTILITY_LABEL, meterLimit, meterLimitMessage, tariffUtility,
+  type Meter, type MeterUtility,
+} from "@/lib/store";
 import { MUNICIPALITIES, MUNICIPALITY_IDS, type MunicipalityId } from "@/lib/tariffs";
 import { errorMessage, useData } from "@/lib/use-data";
+import type { MeterPhoto } from "@/app/api/read-meter/route";
 
 const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
 const unitOf = (m: Meter) => MUNICIPALITIES[m.municipality].tariffs[tariffUtility(m.utility)].unit;
@@ -25,7 +30,9 @@ export default function MetersPage() {
 
   if (state.status === "loading") return <Loading label="Loading your meters" />;
   if (state.status === "error") return <LoadError message={state.message} onRetry={reload} />;
-  const { meters, readings } = state.data;
+  const { meters, readings, profile } = state.data;
+  const limit = meterLimit(profile);
+  const full = meters.length >= limit;
 
   async function remove(m: Meter) {
     const count = readings.filter((r) => r.meterId === m.id).length;
@@ -53,12 +60,24 @@ export default function MetersPage() {
     <div className="grid gap-8">
       <div className="flex items-center justify-between gap-4">
         <h1>Meters</h1>
-        {meters.length > 0 && !adding && (
+        {meters.length > 0 && !adding && !full && (
           <button type="button" className="btn btn--card" onClick={() => setAdding(true)}>
             <Plus aria-hidden="true" size={18} /> Add meter
           </button>
         )}
       </div>
+
+      {full && !isLandlord(profile) && (
+        <section className="stock grid gap-3 p-5" aria-labelledby="landlord-title">
+          <h2 id="landlord-title">Looking after more properties?</h2>
+          <p className="text-ink-2">
+            Accounts cover {METER_LIMIT} meters. The Landlord plan covers up to {LANDLORD_METER_LIMIT}, with everything in Account Shield:
+            unlimited dispute packs, the tracker and reminders. R299 a month, cancel any time.
+          </p>
+          <PayButton product="landlord" disputeId={null} onPaid={reload}>Start the Landlord plan (R299 a month)</PayButton>
+        </section>
+      )}
+      {full && isLandlord(profile) && <p className="notice">{meterLimitMessage(limit)}</p>}
 
       {(meters.length === 0 || adding) && (
         <MeterForm
@@ -74,6 +93,7 @@ export default function MetersPage() {
         <ul className="grid list-none gap-4 p-0">
           {meters.map((m) => {
             const latest = readings.find((r) => r.meterId === m.id);
+            const leak = m.utility === "water" ? leakAlert(readings.filter((r) => r.meterId === m.id)) : null;
             if (editing?.id === m.id) {
               return (
                 <li key={m.id}>
@@ -84,6 +104,7 @@ export default function MetersPage() {
             return (
               <li key={m.id} className="stock grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                 <div className="grid gap-1">
+                  {m.property && <p className="label">{m.property}</p>}
                   <h2>{MUNICIPALITIES[m.municipality].name}</h2>
                   <p className="text-sm text-ink-2">{METER_UTILITY_LABEL[m.utility]}</p>
                   <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
@@ -92,6 +113,14 @@ export default function MetersPage() {
                     <dt className="text-muted">Latest reading</dt>
                     <dd className="fig m-0">{latest ? `${latest.value} ${unitOf(m)}` : "None yet"}</dd>
                   </dl>
+                  {leak && (
+                    <p className="notice mt-2" role="status">
+                      <strong>Possible leak.</strong> Since {formatSast(leak.since).slice(0, 10)} this meter has used{" "}
+                      <span className="fig">{leak.latestPerDay.toFixed(2)} kL</span> a day, against your usual{" "}
+                      <span className="fig">{leak.usualPerDay.toFixed(2)} kL</span>. Close every tap and check whether the meter still turns;
+                      if it does, water is leaking on your side of the meter.
+                    </p>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <button type="button" className="btn btn--ink" onClick={() => openLog(m)}>
@@ -164,7 +193,11 @@ function MeterForm({ first, editing, onSaved, onCancel }: { first: boolean; edit
     setBusy(true);
     setError(null);
     try {
-      const numbers = { accountNumber: String(f.get("accountNumber")).trim(), meterNumber: String(f.get("meterNumber")).trim() };
+      const numbers = {
+        accountNumber: String(f.get("accountNumber")).trim(),
+        meterNumber: String(f.get("meterNumber")).trim(),
+        property: String(f.get("property") ?? "").trim(),
+      };
       if (editing) await getStore().updateMeter(editing.id, numbers);
       else await getStore().addMeter({ municipality: f.get("municipality") as MunicipalityId, utility: f.get("utility") as MeterUtility, ...numbers });
       await onSaved();
@@ -203,6 +236,12 @@ function MeterForm({ first, editing, onSaved, onCancel }: { first: boolean; edit
           <label htmlFor="meterNumber">Meter number</label>
           <input id="meterNumber" name="meterNumber" className="input fig" required autoComplete="off" spellCheck={false} maxLength={40} defaultValue={editing?.meterNumber} />
         </div>
+        <div className="field sm:col-span-2">
+          <label htmlFor="property">Property, optional</label>
+          <input id="property" name="property" className="input" autoComplete="off" maxLength={80} defaultValue={editing?.property}
+            aria-describedby="property-hint" />
+          <p id="property-hint" className="hint">A short label such as &ldquo;12 Oak Street&rdquo; or &ldquo;Flat 3&rdquo;, if you look after more than one property.</p>
+        </div>
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -216,12 +255,50 @@ function MeterForm({ first, editing, onSaved, onCancel }: { first: boolean; edit
 function LogForm({ meter, onSaved, onCancel }: { meter: Meter; onSaved: () => Promise<void>; onCancel: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [typed, setTyped] = useState("");
+  const [seen, setSeen] = useState<MeterPhoto | null>(null);
+  const [reading, setReading] = useState(false);
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+
+  const value = typed.trim() === "" ? NaN : Number(typed.replace(/[\s,]/g, ""));
+  const digits = (s: string) => s.replace(/\D/g, "");
+  const mismatch = seen?.reading != null && value >= 0 && value !== seen.reading;
+  const otherMeter = seen?.meterNumber && digits(seen.meterNumber) && digits(seen.meterNumber) !== digits(meter.meterNumber);
+
+  // Reads the digits off the photo so a typo is caught before it becomes evidence.
+  async function readPhoto(file: File | undefined) {
+    setSeen(null);
+    setPhotoNote(null);
+    setConfirmed(false);
+    if (!file || !file.type.startsWith("image/")) return;
+    setReading(true);
+    try {
+      const body = new FormData();
+      body.append("file", new File([await downscale(file)], "meter.jpg", { type: "image/jpeg" }));
+      body.append("utility", meter.utility === "water" ? "water" : "electricity");
+      const res = await fetch("/api/read-meter", { method: "POST", body });
+      const json = await res.json().catch(() => ({ error: "Reading the photo failed." }));
+      if (!res.ok) return setPhotoNote(res.status === 503 ? null : json.error);
+      const r = json as MeterPhoto;
+      setSeen(r);
+      if (r.reading === null) setPhotoNote("The digits in the photo could not be read clearly. Retake it if you can.");
+      else setTyped((t) => (t.trim() === "" ? String(r.reading) : t));
+    } catch {
+      setPhotoNote("Reading the photo failed. Type the reading in.");
+    } finally {
+      setReading(false);
+    }
+  }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const value = Number(String(f.get("value")).replace(/[\s,]/g, ""));
     if (!(value >= 0)) return setError("Enter the reading as a number, like 47980.");
+    if (mismatch && !confirmed) {
+      setConfirmed(true);
+      return setError(`The photo shows ${seen!.reading}, but you typed ${value}. Correct it, or press Save again to keep ${value}.`);
+    }
     const file = f.get("photo");
     if (file instanceof File && file.size > 0) {
       if (!file.type.startsWith("image/")) return setError("Choose a photo. Other file types are not accepted.");
@@ -250,12 +327,19 @@ function LogForm({ meter, onSaved, onCancel }: { meter: Meter; onSaved: () => Pr
       </div>
       <div className="field">
         <label htmlFor="photo">Meter photo</label>
-        <input id="photo" name="photo" type="file" accept="image/*" capture="environment" className="input" aria-describedby="photo-hint" />
-        <p id="photo-hint" className="hint">Make sure the digits and the meter number are readable.</p>
+        <input id="photo" name="photo" type="file" accept="image/*" capture="environment" className="input" aria-describedby="photo-hint"
+          onChange={(e) => void readPhoto(e.target.files?.[0])} />
+        <p id="photo-hint" className="hint">
+          {reading ? "Reading the digits…" : "Make sure the digits and the meter number are readable. The photo is checked by Anthropic (Claude), in the United States, to catch typos."}
+        </p>
+        {photoNote && <p className="notice" role="status">{photoNote}</p>}
+        {otherMeter && <p className="notice" role="status">The photo shows meter {seen!.meterNumber}, not {meter.meterNumber}. Check you photographed the right meter.</p>}
       </div>
       <div className="field">
         <label htmlFor="value">Meter reading, in {unitOf(meter)}</label>
-        <input id="value" name="value" className="input fig" inputMode="decimal" required autoComplete="off" />
+        <input id="value" name="value" className="input fig" inputMode="decimal" required autoComplete="off" value={typed}
+          onChange={(e) => { setTyped(e.target.value); setConfirmed(false); setError(null); }} />
+        {mismatch && <p className="notice" role="status">The photo shows <span className="fig">{seen!.reading}</span>. Check the digits.</p>}
       </div>
       <div className="field">
         <label htmlFor="note">Note, optional</label>

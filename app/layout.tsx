@@ -7,7 +7,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: { default: "MeterProof: fight estimated municipal bills with evidence", template: "%s | MeterProof" },
   description:
-    "Log timestamped meter photos, calculate your exact overcharge in Rands, and generate a formal municipal dispute pack. For Johannesburg, eThekwini, Tshwane and Cape Town.",
+    "Log timestamped meter photos, calculate your exact overcharge in Rands, and generate a formal municipal dispute pack. For Johannesburg, eThekwini, Tshwane, Cape Town, Ekurhuleni, Mangaung and Buffalo City.",
   openGraph: {
     title: "MeterProof",
     description: "Fight estimated municipal bills with evidence.",

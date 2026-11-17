@@ -1,6 +1,6 @@
 # MeterProof
 
-Fight estimated municipal bills with evidence. Log timestamped meter photos, calculate the overcharge in Rands, and generate a formal dispute pack. Built for City of Johannesburg, eThekwini, City of Tshwane and City of Cape Town.
+Fight estimated municipal bills with evidence. Log timestamped meter photos, calculate the overcharge in Rands, and generate a formal dispute pack. Built for City of Johannesburg, eThekwini, City of Tshwane, City of Cape Town, City of Ekurhuleni, Mangaung and Buffalo City.
 
 MeterProof provides administrative templates and billing calculations, not legal advice.
 
@@ -22,7 +22,9 @@ Open http://localhost:3000.
 
 With the Supabase keys left empty the app runs in **local mode**: there is no login, and meters, readings, photos and disputes are stored in your browser (localStorage and IndexedDB). Every screen works. The data lives in that one browser and disappears if you clear site data.
 
-`NEXT_PUBLIC_DEMO_MODE=true` (the default in `.env.example`) makes the R79 and R39 buttons succeed immediately, so you can test the whole paid flow without PayFast.
+`NEXT_PUBLIC_DEMO_MODE=true` (the default in `.env.example`) makes the R79, R129 and R299 buttons succeed immediately, so you can test the whole paid flow without PayFast.
+
+Prices live in `lib/store/types.ts` (`PRICES`, `PLAN_DAYS`, `FREE_AI_LIMITS`). Account Shield is R129 billed quarterly, so its cheapest payment is above one R79 pack. Free accounts get 2 automatic photo or bill reads and 1 bill explanation every 30 days in Supabase mode, counted in the `rate_limits` table; Shield and Landlord are unlimited. Local mode has no limit.
 
 ### Try the full flow
 
@@ -42,7 +44,7 @@ With the Supabase keys left empty the app runs in **local mode**: there is no lo
 
 ## Updating tariffs (every 1 July)
 
-All rates live in `lib/tariffs.ts`; the maths is in `lib/billing.ts`. Each table records its source and a `verified` flag. Tables marked `verified: false` came from secondary sources or are incomplete, and the app labels their results "indicative". All 2026/27 tables are verified against the municipality's own documents (reviewed 17 November 2026):
+All rates live in `lib/tariffs.ts`; the maths is in `lib/billing.ts`. Each table records its source and a `verified` flag. Tables marked `verified: false` came from secondary sources or are incomplete, and the app labels their results "indicative". All 2026/27 tables except Mangaung's are verified against the municipality's own documents (reviewed 17 November 2026):
 
 | Municipality | Electricity | Water |
 | --- | --- | --- |
@@ -50,6 +52,9 @@ All rates live in `lib/tariffs.ts`; the maths is in `lib/billing.ts`. Each table
 | eThekwini | Final tariff tables, p. 227 (Scale 3 and 4) | Final tariff tables, p. 268 (full pressure, property above R350 000) |
 | Tshwane | City's 2026/27 tariff notice (VAT basis not stated; treated as excluding VAT) | Same notice, normal rates. Level 2 restriction rates from 16 Nov 2026 are higher, so results are a minimum |
 | Cape Town | Budget Annexure 4 | City's approved-tariffs notice, Level Water Wise |
+| Ekurhuleni | Final tariffs Annexure F, Tariff B (Residential) | Same annexure, household use |
+| Mangaung | Centlec's NERSA-approved schedule, Tariff II (indicative: lower season used) | Annexure A4 (indicative: draft batch) |
+| Buffalo City | Final tariff book, Scale 1A credit meter | Same book, domestic normal consumption |
 
 Only per-unit charges are modelled. Fixed monthly charges do not change with the meter reading, so they do not affect an overcharge.
 
@@ -84,6 +89,7 @@ For live payments use your live merchant details and set `PAYFAST_SANDBOX=false`
 - `app/page.tsx`: landing page and Quick Bill Check.
 - `app/dashboard/*`: meters and evidence timeline, bill check, dispute pack, tracker.
 - `app/api/dispute-pack`: checks the payment and builds the PDF on the server. `app/api/account`: deletes the account.
+- `app/api/read-bill`, `read-meter`, `explain-bill`: send a statement or meter photo to Claude (shared code in `lib/claude.ts`) to fill in the bill check, catch a mistyped reading, or explain each charge. Need `ANTHROPIC_API_KEY`; nothing is stored.
 - `app/api/payfast/*`: `checkout` (signed form fields), `notify` (ITN webhook), `demo-unlock` (demo mode only).
 - `lib/store/*`: one `Store` interface with two implementations, `local.ts` (browser) and `supabase.ts`. `index.ts` picks one from the environment.
 - `lib/letters.ts`, `lib/pdf.ts`: dispute letter text and the jsPDF document.
@@ -94,7 +100,9 @@ For live payments use your live merchant details and set `PAYFAST_SANDBOX=false`
 - **Legal pages:** fill in the operator name and contact email in `lib/legal.ts`. `/privacy` and `/terms` are drafts; have them reviewed.
 - **Sign-in emails:** Supabase's built-in sender allows only a few emails an hour. Connect your own SMTP provider under Authentication > Emails.
 - **Tariffs:** re-check every table on 1 July (see above).
-- **Reminders:** the tracker shows a reading schedule, but nothing is emailed or sent by SMS yet.
+- **Reminders:** the tracker offers a repeating calendar reminder (.ics) for the 1st of each month. Nothing is emailed or sent by SMS.
+- **Database:** after pulling these changes, run `supabase/schema.sql` again in the SQL Editor. It adds the three new metros, the Landlord plan, property labels, the 3-meter limit (30 on Landlord) and the public `recovered_total()` figure.
+- **Tariffs still to confirm:** Mangaung's electricity (seasons unclear in Centlec's schedule) and water (draft annexure) are marked indicative. Nelson Mandela Bay is not included: no official 2026/27 schedule was published when this was written, and a court order on its block tariff was pending.
 
 ## Deploying to Vercel
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { clientIp, crossSite, isUuid, rateLimited } from "@/lib/api-guard";
 import { PRODUCTS, type Product } from "@/lib/payfast";
-import { hasSupabaseServer, supabaseAdmin, supabaseFromCookies } from "@/lib/supabase-server";
+import { grantPlan, hasSupabaseServer, supabaseAdmin, supabaseFromCookies } from "@/lib/supabase-server";
 
 /** Demo mode only: records a completed payment without PayFast, so the paid flow can be tested. */
 export async function POST(request: Request) {
@@ -26,8 +26,6 @@ export async function POST(request: Request) {
   });
   if (insert.error) return NextResponse.json({ error: "Could not record the demo payment." }, { status: 500 });
 
-  if (body.product === "account_shield") {
-    await admin.from("profiles").update({ shield_active_until: new Date(Date.now() + 35 * 86_400_000).toISOString() }).eq("id", data.user.id);
-  }
+  await grantPlan(data.user.id, body.product);
   return NextResponse.json({ ok: true });
 }

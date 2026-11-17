@@ -1,6 +1,6 @@
 // Supabase mode: the same Store, run from the browser and protected by Row Level Security.
 import { createBrowserClient } from "@supabase/ssr";
-import type { Profile, Store } from "./types";
+import { meterLimitMessage, type Profile, type Store } from "./types";
 
 // The session cookie is Secure on https and SameSite=Lax. It cannot be HttpOnly: this client reads
 // it in the browser to talk to Supabase directly (see security-checklist.md).
@@ -36,7 +36,7 @@ export function createSupabaseStore(): Store {
     async getProfile(): Promise<Profile> {
       const user = await uid();
       const r = ok(await sb.from("profiles").select("*").eq("id", user.id).maybeSingle()) as Row | null;
-      return { fullName: r?.full_name ?? "", address: r?.address ?? "", email: user.email ?? "", shieldActiveUntil: r?.shield_active_until ?? null };
+      return { fullName: r?.full_name ?? "", address: r?.address ?? "", email: user.email ?? "", shieldActiveUntil: r?.shield_active_until ?? null, landlordUntil: r?.landlord_until ?? null };
     },
     async saveProfile(p) {
       const user = await uid();
@@ -46,13 +46,17 @@ export function createSupabaseStore(): Store {
     listMeters: async () => (ok(await sb.from("meters").select("*").order("created_at")) as Row[]).map(toMeter),
     async addMeter(m) {
       const user = await uid();
-      return toMeter(ok(await sb.from("meters").insert({
+      const res = await sb.from("meters").insert({
         user_id: user.id, municipality: m.municipality, account_number: m.accountNumber, meter_number: m.meterNumber, utility: m.utility,
-      }).select().single()));
+        property: m.property ?? "",
+      }).select().single();
+      // The database enforces the plan's meter limit (see check_meter_limit in schema.sql).
+      if (res.error?.message.includes("meter_limit:")) throw new Error(meterLimitMessage(Number(res.error.message.split("meter_limit:")[1])));
+      return toMeter(ok(res));
     },
 
     async updateMeter(id, patch) {
-      ok(await sb.from('meters').update({ account_number: patch.accountNumber, meter_number: patch.meterNumber }).eq('id', id).select());
+      ok(await sb.from("meters").update({ account_number: patch.accountNumber, meter_number: patch.meterNumber, property: patch.property ?? "" }).eq("id", id).select());
     },
     // Readings and disputes for the meter go with it (foreign keys cascade).
     async deleteMeter(id) {
@@ -97,6 +101,7 @@ export function createSupabaseStore(): Store {
     async updateDispute(id, patch) {
       ok(await sb.from("disputes").update({
         reference_number: patch.referenceNumber, submitted_on: patch.submittedOn, channel: patch.channel, status: patch.status,
+        recovered_rand: patch.recoveredRand,
       }).eq("id", id).select());
     },
 

@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Camera, Calculator, FileText } from "lucide-react";
 import { QuickCheck } from "@/components/quick-check";
+import { RecoveredTotal } from "@/components/recovered-total";
+import { FREE_AI_LIMITS, LANDLORD_METER_LIMIT } from "@/lib/store/types";
 import { checkBill, formatRand, formatUnits } from "@/lib/billing";
 import { MUNICIPALITIES, MUNICIPALITY_IDS, TARIFF_YEAR } from "@/lib/tariffs";
 
@@ -11,15 +14,19 @@ const example = checkBill({ tariff: exampleTariff, billingDays: 30, billedPrevio
 const plans = [
   {
     name: "Free forever", price: "R0", unit: "", href: "/dashboard", action: "Start logging readings",
-    items: ["Monthly timestamped meter photo logger", "Overcharge estimator"],
+    items: ["Monthly timestamped meter photo logger", "Overcharge estimator", `${FREE_AI_LIMITS.read} automatic photo or bill reads every 30 days`],
   },
   {
     name: "Dispute Pack", price: "R79", unit: "once-off", href: "/dashboard/dispute-pack", action: "Build a dispute pack",
     items: ["Downloadable PDF dispute letter", "Embedded timestamped photo evidence", "Estimated-vs-actual tariff maths", "Safe average payment calculator"],
   },
   {
-    name: "Account Shield", price: "R39", unit: "a month", href: "/dashboard/tracker", action: "Open the tracker",
-    items: ["Unlimited dispute packs", "Dispute reference number and escalation tracker", "Reading submission reminder schedule"],
+    name: "Account Shield", price: "R129", unit: "a quarter", href: "/dashboard/tracker", action: "Open the tracker",
+    items: ["Unlimited dispute packs", "Unlimited photo and bill reads","Dispute reference number and escalation tracker", "Escalation letters up to the Public Protector", "Monthly reading reminder for your calendar"],
+  },
+  {
+    name: "Landlord", price: "R299", unit: "a month", href: "/dashboard", action: "Add your properties",
+    items: [`Everything in Account Shield`, `Up to ${LANDLORD_METER_LIMIT} meters across your properties`, "Property labels on every meter"],
   },
 ];
 
@@ -49,13 +56,14 @@ export default function Home() {
                 <Link href="/dashboard" className="btn btn--ink">Log a meter reading</Link>
                 <a href="#pricing" className="btn btn--card">See pricing</a>
               </div>
+              <Suspense fallback={null}><RecoveredTotal /></Suspense>
             </div>
             <QuickCheck />
           </div>
         </section>
 
         <section className="wrap py-(--section-gap)" aria-labelledby="metros">
-          <h2 id="metros">Four metros, each with its own tariff table</h2>
+          <h2 id="metros">Seven metros, each with its own tariff table</h2>
           <ul className="mt-10 grid list-none gap-(--gap-columns) p-0 sm:grid-cols-2 lg:grid-cols-4">
             {MUNICIPALITY_IDS.map((id) => {
               const m = MUNICIPALITIES[id];
@@ -120,7 +128,7 @@ export default function Home() {
         <section id="pricing" className="board" aria-labelledby="pricing-title">
           <div className="wrap py-(--section-gap)">
             <h2 id="pricing-title">Free to log. Pay only when you dispute.</h2>
-            <div className="mt-10 grid gap-10 lg:grid-cols-3 lg:gap-(--gap-columns)">
+            <div className="mt-10 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-(--gap-columns)">
               {plans.map((p) => (
                 <article key={p.name} className="grid content-start gap-4 border-t border-board-type/25 pt-6">
                   <h3>{p.name}</h3>

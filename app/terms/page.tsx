@@ -18,7 +18,7 @@ export default function TermsPage() {
 
       <h2>Calculations and tariffs</h2>
       <p>
-        Amounts are estimates based on published residential tariffs and the figures you enter. Tariffs that could not be confirmed from the municipality's own documents are marked indicative. Fixed
+        Amounts are estimates based on published residential tariffs and the figures you enter. Tariffs that could not be confirmed from the municipality&rsquo;s own documents are marked indicative. Fixed
         charges, rebates and special tariffs on your account are not modelled. Always check the result against your own statement before relying on
         it.
       </p>
@@ -32,16 +32,18 @@ export default function TermsPage() {
 
       <h2>Prices</h2>
       <ul>
-        <li>Logging readings and estimating overcharges is free.</li>
+        <li>Logging readings and estimating overcharges is free. A free account also gets 2 automatic photo or bill reads and 1 bill explanation every 30 days.</li>
         <li>Dispute Pack: R79 once-off for one bill check, including VAT where applicable.</li>
-        <li>Account Shield: R39 a month, debited monthly until cancelled.</li>
+        <li>Account Shield: R129 a quarter, debited every 3 months until cancelled. Includes unlimited dispute packs and unlimited automatic reads.</li>
+        <li>Landlord: R299 a month, debited monthly until cancelled. Everything in Account Shield, for up to 30 meters.</li>
       </ul>
+      <p>Without the Landlord plan an account can hold up to 3 meters.</p>
       <p>Payments are processed by PayFast. We do not store card or bank details.</p>
 
-      <h2>Cancelling Account Shield</h2>
+      <h2>Cancelling Account Shield or Landlord</h2>
       <p>
         Cancel at any time through PayFast or your bank. Access continues until the end of the period already paid for. We do not refund part of
-        a month.
+        a billing period.
       </p>
 
       <h2>Refunds</h2>

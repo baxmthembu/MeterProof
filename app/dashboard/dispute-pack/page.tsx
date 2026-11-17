@@ -237,7 +237,7 @@ function Pack({ data, selectedId, justPaid, cancelled, reload }: {
       ) : (
         <div className="grid gap-4">
           <PayButton product="dispute_pack" disputeId={dispute.id} onPaid={reload}>Unlock &amp; Download PDF (R79)</PayButton>
-          <PayButton product="account_shield" disputeId={null} onPaid={reload} variant="card">Or Account Shield, R39 a month</PayButton>
+          <PayButton product="account_shield" disputeId={null} onPaid={reload} variant="card">Or Account Shield, R129 a quarter, every dispute included</PayButton>
         </div>
       )}
       <button type="button" className="btn btn--card justify-self-start" onClick={() => void removeDispute()}>

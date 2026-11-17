@@ -108,6 +108,52 @@ export function businessDaysBetween(from: Date, to: Date): number {
 
 export const ESCALATION_BUSINESS_DAYS = 21;
 
+export interface LeakAlert {
+  /** kL a day since the second-last reading. */
+  latestPerDay: number;
+  /** kL a day over all earlier readings. */
+  usualPerDay: number;
+  since: string;
+}
+
+/**
+ * Flags a possible water leak: daily use since the last reading is at least double the earlier
+ * average, and at least 200 litres a day more. Readings less than a day apart are skipped, and a
+ * negative step (meter replaced or misread) turns the check off.
+ */
+// ponytail: compares against the whole history; a seasonal baseline would need a year of readings.
+export function leakAlert(readings: { value: number; loggedAt: string }[]): LeakAlert | null {
+  const days = (a: { loggedAt: string }, b: { loggedAt: string }) => (Date.parse(b.loggedAt) - Date.parse(a.loggedAt)) / 86_400_000;
+  const points = [...readings]
+    .sort((a, b) => a.loggedAt.localeCompare(b.loggedAt))
+    .reduce<typeof readings>((kept, r) => (kept.length === 0 || days(kept[kept.length - 1], r) >= 1 ? [...kept, r] : kept), []);
+  if (points.length < 3) return null;
+  const [first, prev, last] = [points[0], points[points.length - 2], points[points.length - 1]];
+  const usualPerDay = (prev.value - first.value) / days(first, prev);
+  const latestPerDay = (last.value - prev.value) / days(prev, last);
+  if (usualPerDay < 0 || latestPerDay < 0) return null;
+  return latestPerDay >= 2 * usualPerDay && latestPerDay - usualPerDay >= 0.2 ? { latestPerDay, usualPerDay, since: prev.loggedAt } : null;
+}
+
+/** A repeating monthly calendar reminder (on the 1st) to photograph and log every meter. */
+export function readingReminderIcs(siteUrl: string, from = new Date()): string {
+  const first = new Date(from.getFullYear(), from.getMonth() + 1, 1);
+  const ymd = (d: Date) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  return [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MeterProof//Reading reminder//EN", "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:reading-reminder-${ymd(first)}@meterproof`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${ymd(first)}`,
+    "RRULE:FREQ=MONTHLY;BYMONTHDAY=1",
+    "SUMMARY:Photograph and log your meter readings",
+    `DESCRIPTION:Open MeterProof and log a photo of every meter: ${siteUrl}/dashboard`,
+    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Log your meter readings in MeterProof", "TRIGGER:PT9H", "END:VALARM",
+    "END:VEVENT", "END:VCALENDAR", "",
+  ].join("\r\n");
+}
+
 /** "2026-11-15 22:03 SAST" */
 export function formatSast(iso: string | Date): string {
   const d = typeof iso === "string" ? new Date(iso) : iso;

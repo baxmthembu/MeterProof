@@ -1,9 +1,8 @@
 import { lookup } from "node:dns/promises";
 import { paramString, payfastHost, PRODUCTS, verifyItnSignature, type Fields, type Product } from "@/lib/payfast";
-import { hasSupabaseServer, supabaseAdmin } from "@/lib/supabase-server";
+import { grantPlan, hasSupabaseServer, supabaseAdmin } from "@/lib/supabase-server";
 
 const PAYFAST_HOSTS = ["www.payfast.co.za", "sandbox.payfast.co.za", "w1w.payfast.co.za", "w2w.payfast.co.za"];
-const SHIELD_DAYS = 35; // one month plus a grace period for the next debit
 
 async function fromPayfast(request: Request): Promise<boolean> {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
@@ -50,12 +49,8 @@ export async function POST(request: Request) {
   const pfId = get("pf_payment_id");
   if (payment.data.pf_payment_id !== pfId) {
     await admin.from("payments").update({ status: "complete", pf_payment_id: pfId }).eq("id", payment.data.id);
-    if (product === "account_shield") {
-      // Each monthly debit sends a new ITN and pushes the expiry forward.
-      await admin.from("profiles")
-        .update({ shield_active_until: new Date(Date.now() + SHIELD_DAYS * 86_400_000).toISOString() })
-        .eq("id", payment.data.user_id);
-    }
+    // Each subscription debit (quarterly Shield, monthly Landlord) sends a new ITN and pushes the expiry forward.
+    await grantPlan(payment.data.user_id, product);
   }
   return new Response("OK");
 }

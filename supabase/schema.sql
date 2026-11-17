@@ -208,3 +208,57 @@ $$;
 
 revoke all on function public.rate_limit_hit(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.rate_limit_hit(text, integer, integer) to service_role;
+
+-- ---------------------------------------------------------------- more metros, Landlord plan, recovered amounts
+alter table public.meters drop constraint if exists meters_municipality_check;
+alter table public.meters add constraint meters_municipality_check
+  check (municipality in ('joburg', 'ethekwini', 'tshwane', 'capetown', 'ekurhuleni', 'mangaung', 'buffalocity'));
+
+-- Optional property label, so a landlord can tell 30 meters apart.
+alter table public.meters add column if not exists property text not null default '';
+alter table public.meters drop constraint if exists meters_property_length;
+alter table public.meters add constraint meters_property_length check (char_length(property) <= 80);
+
+-- Landlord plan: written only by the server, like shield_active_until (no update grant to users).
+alter table public.profiles add column if not exists landlord_until timestamptz;
+
+alter table public.payments drop constraint if exists payments_product_check;
+alter table public.payments add constraint payments_product_check
+  check (product in ('dispute_pack', 'account_shield', 'landlord'));
+
+-- What the municipality credited back once a dispute is resolved.
+alter table public.disputes add column if not exists recovered_rand numeric(12, 2);
+alter table public.disputes drop constraint if exists disputes_recovered_range;
+alter table public.disputes add constraint disputes_recovered_range
+  check (recovered_rand is null or recovered_rand between 0 and 1000000);
+
+-- 3 meters per account, 30 on an active Landlord plan. Enforced here so a crafted request cannot skip it.
+create or replace function public.check_meter_limit()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  v_limit integer;
+begin
+  select case when p.landlord_until > now() then 30 else 3 end into v_limit
+    from public.profiles p where p.id = new.user_id;
+  v_limit := coalesce(v_limit, 3);
+  if (select count(*) from public.meters m where m.user_id = new.user_id) >= v_limit then
+    raise exception 'meter_limit:%', v_limit;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists meters_limit on public.meters;
+create trigger meters_limit before insert on public.meters
+  for each row execute function public.check_meter_limit();
+
+-- Public total for the homepage: only resolved disputes, and never more than the overcharge MeterProof
+-- calculated, so one inflated entry cannot inflate the figure. Returns totals only, no rows.
+create or replace function public.recovered_total()
+returns table (total numeric, disputes bigint) language sql stable security definer set search_path = '' as $$
+  select coalesce(sum(least(d.recovered_rand, d.overcharge_rand)), 0), count(*)
+    from public.disputes d
+   where d.status = 'Resolved & Credited' and d.recovered_rand > 0;
+$$;
+revoke all on function public.recovered_total() from public;
+grant execute on function public.recovered_total() to anon, authenticated;
