@@ -33,6 +33,11 @@ test("Joburg water: first 6 kL free, hand-checked 12 kL", () => {
   assert.equal(steppedCharge(t, 12), 235.01);
 });
 
+test("eThekwini water: published rates include VAT, hand-checked 12 kL", () => {
+  // 6 x 50.70 + 6 x 60.10 = 664.80, no VAT added
+  assert.equal(steppedCharge(MUNICIPALITIES.ethekwini.tariffs.water, 12), 664.8);
+});
+
 test("bill check: overcharge and safe payment", () => {
   const r = checkBill({ tariff: flat, billingDays: 30, billedPrevious: 1000, billedCurrent: 1250, actualReading: 1150 });
   assert.equal(r.billedUnits, 250);

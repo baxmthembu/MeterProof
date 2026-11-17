@@ -42,14 +42,14 @@ With the Supabase keys left empty the app runs in **local mode**: there is no lo
 
 ## Updating tariffs (every 1 July)
 
-All rates live in `lib/tariffs.ts`; the maths is in `lib/billing.ts`. Each table records its source and a `verified` flag. Tables marked `verified: false` came from secondary sources or are incomplete, and the app labels their results "indicative". Before launch, replace them from each municipality's official tariff book:
+All rates live in `lib/tariffs.ts`; the maths is in `lib/billing.ts`. Each table records its source and a `verified` flag. Tables marked `verified: false` came from secondary sources or are incomplete, and the app labels their results "indicative". All 2026/27 tables are verified against the municipality's own documents (reviewed 17 November 2026):
 
 | Municipality | Electricity | Water |
 | --- | --- | --- |
-| Johannesburg | Indicative (third-party transcription of the budget book) | Verified (official schedule) |
-| eThekwini | Indicative (third-party) | Indicative: only the lowest block rate is known, so results are a minimum |
-| Tshwane | Indicative (official notice could not be opened) | Indicative: Level 2 restriction rates |
-| Cape Town | Verified (official page) | Indicative (VAT basis inferred) |
+| Johannesburg | City Power schedule in the March 2026 Council item, plus the 6c/kWh network surcharge above 500 kWh | Approved water tariff schedule |
+| eThekwini | Final tariff tables, p. 227 (Scale 3 and 4) | Final tariff tables, p. 268 (full pressure, property above R350 000) |
+| Tshwane | City's 2026/27 tariff notice (VAT basis not stated; treated as excluding VAT) | Same notice, normal rates. Level 2 restriction rates from 16 Nov 2026 are higher, so results are a minimum |
+| Cape Town | Budget Annexure 4 | City's approved-tariffs notice, Level Water Wise |
 
 Only per-unit charges are modelled. Fixed monthly charges do not change with the meter reading, so they do not affect an overcharge.
 
@@ -93,7 +93,7 @@ For live payments use your live merchant details and set `PAYFAST_SANDBOX=false`
 
 - **Legal pages:** fill in the operator name and contact email in `lib/legal.ts`. `/privacy` and `/terms` are drafts; have them reviewed.
 - **Sign-in emails:** Supabase's built-in sender allows only a few emails an hour. Connect your own SMTP provider under Authentication > Emails.
-- **Tariffs:** replace the indicative tables (see above).
+- **Tariffs:** re-check every table on 1 July (see above).
 - **Reminders:** the tracker shows a reading schedule, but nothing is emailed or sent by SMS yet.
 
 ## Deploying to Vercel

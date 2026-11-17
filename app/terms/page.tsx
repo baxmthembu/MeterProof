@@ -18,7 +18,7 @@ export default function TermsPage() {
 
       <h2>Calculations and tariffs</h2>
       <p>
-        Amounts are estimates based on published residential tariffs and the figures you enter. Some tariff tables are marked indicative. Fixed
+        Amounts are estimates based on published residential tariffs and the figures you enter. Tariffs that could not be confirmed from the municipality's own documents are marked indicative. Fixed
         charges, rebates and special tariffs on your account are not modelled. Always check the result against your own statement before relying on
         it.
       </p>
