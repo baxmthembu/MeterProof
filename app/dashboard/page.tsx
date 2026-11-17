@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Camera, Pencil, Plus, Trash2 } from "lucide-react";
+import { useConfirm } from "@/components/confirm";
 import { Photo } from "@/components/photo";
 import { Loading, LoadError } from "@/components/states";
 import { formatSast } from "@/lib/billing";
@@ -20,6 +21,7 @@ export default function MetersPage() {
   const [editing, setEditing] = useState<Meter | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   if (state.status === "loading") return <Loading label="Loading your meters" />;
   if (state.status === "error") return <LoadError message={state.message} onRetry={reload} />;
@@ -27,8 +29,12 @@ export default function MetersPage() {
 
   async function remove(m: Meter) {
     const count = readings.filter((r) => r.meterId === m.id).length;
-    const what = `Delete meter ${m.meterNumber}? Its ${count} reading${count === 1 ? "" : "s"}, photos and bill checks are deleted too. This cannot be undone.`;
-    if (!window.confirm(what)) return;
+    const ok = await confirm({
+      title: `Delete meter ${m.meterNumber}?`,
+      body: `Its ${count} reading${count === 1 ? "" : "s"}, photos and bill checks are deleted too. This cannot be undone.`,
+      confirmLabel: "Delete meter",
+    });
+    if (!ok) return;
     setActionError(null);
     try {
       await getStore().deleteMeter(m.id);
@@ -143,6 +149,7 @@ export default function MetersPage() {
           />
         )}
       </dialog>
+      {confirmDialog}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useConfirm } from "@/components/confirm";
 import { Loading, LoadError } from "@/components/states";
 import { formatLongDate } from "@/lib/billing";
 import { getStore } from "@/lib/store";
@@ -13,6 +14,7 @@ export default function AccountPage() {
   const { state, reload } = useData();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   if (state.status === "loading") return <Loading label="Loading your account" />;
   if (state.status === "error") return <LoadError message={state.message} onRetry={reload} />;
@@ -21,7 +23,12 @@ export default function AccountPage() {
   const shield = !!profile.shieldActiveUntil && new Date(profile.shieldActiveUntil) > new Date();
 
   async function erase() {
-    if (!window.confirm("Delete your account and everything in it: meters, readings, photos, bill checks and letters? This cannot be undone.")) return;
+    const ok = await confirm({
+      title: store.mode === "supabase" ? "Delete your account?" : "Delete your data?",
+      body: "Your meters, readings, photos, bill checks and letters are deleted for good. This cannot be undone.",
+      confirmLabel: store.mode === "supabase" ? "Delete my account" : "Delete my data",
+    });
+    if (!ok) return;
     setBusy(true);
     setError(null);
     try {
@@ -76,6 +83,7 @@ export default function AccountPage() {
           {busy ? "Deleting…" : store.mode === "supabase" ? "Delete my account" : "Delete my data"}
         </button>
       </section>
+      {dialog}
     </div>
   );
 }

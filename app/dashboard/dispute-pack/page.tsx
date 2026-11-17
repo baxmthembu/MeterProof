@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Download, Trash2 } from "lucide-react";
+import { useConfirm } from "@/components/confirm";
 import { PayButton } from "@/components/pay-button";
 import { Photo } from "@/components/photo";
 import { Empty, Loading, LoadError } from "@/components/states";
@@ -49,6 +50,7 @@ function Pack({ data, selectedId, justPaid, cancelled, reload }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const { confirm, dialog } = useConfirm();
 
   if (!meter || !evidence) {
     return <LoadError message="This dispute's meter or photo reading is missing." onRetry={reload} />;
@@ -74,7 +76,12 @@ function Pack({ data, selectedId, justPaid, cancelled, reload }: {
   }
 
   async function removeDispute() {
-    if (!window.confirm("Delete this bill check and its letter? This cannot be undone.")) return;
+    const ok = await confirm({
+      title: "Delete this bill check?",
+      body: "The bill check and its letter are deleted. Your meter readings and photos stay. This cannot be undone.",
+      confirmLabel: "Delete bill check",
+    });
+    if (!ok) return;
     setError(null);
     try {
       await getStore().deleteDispute(dispute.id);
@@ -239,6 +246,7 @@ function Pack({ data, selectedId, justPaid, cancelled, reload }: {
       <p className="hint">
         Statement dated {formatLongDate(dispute.statementDate)}. MeterProof provides administrative templates and billing calculations, not legal advice.
       </p>
+      {dialog}
     </div>
   );
 }

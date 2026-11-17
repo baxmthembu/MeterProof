@@ -30,6 +30,7 @@
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); min-height: var(--tap); padding: 0 var(--space-lg); border: 0; border-radius: var(--radius-stock); font-weight: 500; white-space: nowrap; flex: none; text-decoration: none; cursor: pointer; transition: transform var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out); }
   .btn--card { background-color: var(--color-cotton); background-image: var(--tex-cotton); color: var(--color-print); text-shadow: 0.5px 0.75px 0 var(--color-cotton); box-shadow: var(--edge-stock), var(--cast-stock); }
   .btn--ink { background: var(--color-board); color: var(--color-board-type); text-shadow: 0 -0.75px 0 var(--color-ink); box-shadow: var(--cast-stock); }
+  .btn--danger { background: var(--color-error); color: white; box-shadow: var(--cast-stock); }
   .board .btn--card { box-shadow: 6px 5px 10px -6px oklch(var(--deep) / 0.6); }
   .btn:hover { transform: translateY(-1px); box-shadow: var(--edge-stock), var(--cast-stock-lift); }
   .btn:active { transform: translateY(1px); box-shadow: var(--edge-stock); }
