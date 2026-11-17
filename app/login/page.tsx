@@ -83,7 +83,8 @@ export default function LoginPage() {
               <Link href="/dashboard" className="btn btn--ink">Open the dashboard</Link>
             </>
           ) : step === "code" ? (
-            <form className="grid grid-cols-1 gap-4" onSubmit={verify}>
+            // The keys stop React reusing the email <input> as the code input, which kept the typed email.
+            <form key="code" className="grid grid-cols-1 gap-4" onSubmit={verify}>
               <h1>Check your email</h1>
               <p className="text-ink-2" role="status">
                 We emailed <span className="font-medium break-all">{email}</span>. Type the code from that email here.
@@ -99,7 +100,7 @@ export default function LoginPage() {
               <button type="button" className="btn btn--card" onClick={() => { setStep("email"); setError(null); }}>Use a different email</button>
             </form>
           ) : (
-            <form className="grid grid-cols-1 gap-4" onSubmit={send}>
+            <form key="email" className="grid grid-cols-1 gap-4" onSubmit={send}>
               <h1>Sign in</h1>
               <p className="text-ink-2">We email you a one-time code. There is no password to remember.</p>
               <div className="field">
