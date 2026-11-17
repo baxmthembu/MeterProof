@@ -94,9 +94,31 @@ export function buildDisputePack(letter: Letter, annexures: Annexure[], referenc
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p).setFont("helvetica", "normal").setFontSize(8).setTextColor(110);
-    doc.text(`Dispute pack ${reference}. Prepared with MeterProof: administrative template and billing calculation, not legal advice.`, M, 297 - 10);
+    footerMark(doc, M, 297 - 10 - 2.6, 3);
+    doc.text(`Dispute pack ${reference}. Prepared with MeterProof: administrative template and billing calculation, not legal advice.`, M + 4.2, 297 - 10);
     doc.text(`Page ${p} of ${pages}`, 210 - M, 297 - 10, { align: "right" });
     doc.setTextColor(0);
   }
   return doc;
+}
+
+/**
+ * The MeterProof mark as vectors, size mm square with its top-left at (x, y), in the footer's grey
+ * so it stays quiet on a letter the household sends. Geometry matches components/logo.tsx.
+ */
+function footerMark(doc: jsPDF, x: number, y: number, size: number) {
+  const s = size / 256;
+  const at = (u: number, v: number): [number, number] => [x + u * s, y + v * s];
+  doc.setFillColor(110, 110, 110);
+  doc.rect(...at(40, 20), 52 * s, 216 * s, "F");
+  doc.circle(...at(140, 92), 76 * s, "F");
+  doc.setFillColor(255, 255, 255);
+  doc.circle(...at(140, 92), 36 * s, "F");
+  doc.setFillColor(110, 110, 110);
+  doc.circle(...at(140, 92), 12 * s, "F");
+  // The needle as one closed polygon (two triangles leave a hairline seam).
+  const needle = [at(134.34, 86.34), at(159.8, 60.88), at(171.12, 72.2), at(145.66, 97.66)];
+  const steps = needle.slice(1).map(([px, py], i) => [px - needle[i][0], py - needle[i][1]]);
+  doc.lines(steps, needle[0][0], needle[0][1], [1, 1], "F", true);
+  doc.setFillColor(0, 0, 0);
 }

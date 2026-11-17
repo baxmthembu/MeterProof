@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><title>MeterProof</title><g transform="translate(2.94 2.34) scale(0.977)">
+  
+  <path fill="#1D1614" d="M40,20 H92 V236 H40 Z M140,16 A76,76 0 1 1 140,168 A76,76 0 1 1 140,16 Z M140,56 A36,36 0 1 0 140,128 A36,36 0 1 0 140,56 Z"/>
+  <circle fill="#BB3D31" cx="140" cy="92" r="12"/>
+  <path fill="#BB3D31" d="M134.34,86.34 L159.80,60.88 L171.12,72.20 L145.66,97.66 Z"/>
+</g></svg>

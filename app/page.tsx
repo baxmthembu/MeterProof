@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Camera, Calculator, FileText } from "lucide-react";
 import { QuickCheck } from "@/components/quick-check";
+import { Logo } from "@/components/logo";
 import { RecoveredTotal } from "@/components/recovered-total";
 import { FREE_AI_LIMITS, LANDLORD_METER_LIMIT } from "@/lib/store/types";
 import { checkBill, formatRand, formatUnits } from "@/lib/billing";
@@ -35,7 +36,7 @@ export default function Home() {
     <>
       <header className="desk">
         <nav className="wrap flex items-center justify-between py-3" aria-label="Main">
-          <Link href="/" className="link--tap text-lg font-semibold tracking-tight no-underline" translate="no">MeterProof</Link>
+          <Link href="/" className="link--tap text-lg font-semibold tracking-tight no-underline" translate="no"><Logo /></Link>
           <div className="flex items-center gap-2">
             <a href="#pricing" className="link--tap px-3 font-medium no-underline max-sm:hidden">Pricing</a>
             <Link href="/dashboard" className="btn btn--card">Open dashboard</Link>
@@ -148,7 +149,7 @@ export default function Home() {
       </main>
 
       <footer className="wrap grid gap-6 py-16">
-        <p className="text-3xl font-semibold tracking-tight">MeterProof</p>
+        <p className="text-3xl font-semibold tracking-tight" translate="no"><Logo /></p>
         <p className="max-w-[60ch]">MeterProof provides administrative templates and billing calculations, not legal advice.</p>
         <nav className="flex flex-wrap gap-x-6" aria-label="Footer">
           <Link href="/dashboard" className="link link--tap">Dashboard</Link>

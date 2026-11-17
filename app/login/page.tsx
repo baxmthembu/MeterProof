@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Logo } from "@/components/logo";
 import { HAS_SUPABASE } from "@/lib/store";
 import { supabaseBrowser } from "@/lib/store/supabase";
 
@@ -75,7 +76,7 @@ export default function LoginPage() {
     <main id="main" className="app desk grid min-h-dvh place-items-center py-10">
       <div className="wrap max-w-[440px]!">
         <div className="stock grid gap-4 p-6">
-          <Link href="/" className="link--tap text-lg font-semibold tracking-tight no-underline" translate="no">MeterProof</Link>
+          <Link href="/" className="link--tap text-lg font-semibold tracking-tight no-underline" translate="no"><Logo /></Link>
           {!HAS_SUPABASE ? (
             <>
               <h1>No sign-in needed</h1>

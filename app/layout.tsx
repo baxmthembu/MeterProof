@@ -14,6 +14,9 @@ export const metadata: Metadata = {
     locale: "en_ZA",
     type: "website",
   },
+  // Icons, manifest and the share image come from the file conventions in app/
+  // (favicon.ico, icon.svg, apple-icon.png, manifest.ts, opengraph-image.png, twitter-image.png).
+  twitter: { card: "summary_large_image", title: "MeterProof", description: "Fight estimated municipal bills with evidence." },
 };
 
 export const viewport: Viewport = { themeColor: "#f6f3f0" };

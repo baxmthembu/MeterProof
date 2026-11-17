@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { Gauge, Calculator, FileText, ListChecks } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { getStore, HAS_SUPABASE } from "@/lib/store";
 
 const NAV = [
@@ -36,7 +37,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
     <div className="app flex min-h-dvh flex-col bg-paper">
       <header className="border-b border-rule bg-paper-2">
         <div className="wrap flex items-center justify-between gap-4 py-2">
-          <Link href="/" className="link--tap text-lg font-semibold tracking-tight no-underline" translate="no">MeterProof</Link>
+          <Link href="/" className="link--tap text-lg font-semibold tracking-tight no-underline" translate="no"><Logo /></Link>
           <nav className="topnav flex gap-1 max-md:hidden" aria-label="Dashboard">{links("gap-2", 18)}</nav>
           <div className="flex items-center gap-3">
             {!HAS_SUPABASE && <span className="tag text-muted" title="No Supabase keys set: data is kept in this browser only">Local mode</span>}

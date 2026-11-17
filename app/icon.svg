@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>MeterProof</title>
+  <style>.l{fill:#1D1614}.n{fill:#BB3D31}@media (prefers-color-scheme:dark){.l{fill:#F6F3EF}.n{fill:#EF8B7B}}</style>
+  <g transform="translate(-16.09 -13.07) scale(1.117)">
+    <path class="l" d="M30,22 H92 V234 H30 Z M142,14 A86,86 0 1 1 142,186 A86,86 0 1 1 142,14 Z M142,56 A44,44 0 1 0 142,144 A44,44 0 1 0 142,56 Z"/>
+    <circle class="n" cx="142" cy="100" r="17"/>
+    <path class="n" d="M133.51,91.51 L164.63,60.39 L181.61,77.37 L150.49,108.49 Z"/>
+  </g>
+</svg>
