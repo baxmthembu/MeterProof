@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# /brag launch video output
+/brag-output*/
+
+# Playwright MCP snapshots and screenshots
+/.playwright-mcp/
